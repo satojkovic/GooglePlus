@@ -5,23 +5,36 @@ use warnings;
 
 use Config::Pit;
 use WebService::Simple;
+use WWW::Mechanize;
+use Web::Scraper;
+use Encode;
+use YAML;
 
 ## APIKey and UserID
 my $config = pit_get("plus.google.com", require=>{
     "APIKey" => "your API key",
-    "UserID" => "your user ID"
+    "UserID" => "your user ID",
+    "Mail" => "your mailaddress",
+    "Password" => "your password"
                      });
 
 my $api_key = $config->{APIKey};
 my $user_id = $config->{UserID};
+my $mail = $config->{Mail};
+my $password = $config->{Password};
 
-## API access
-my $agent = WebService::Simple->new(
-    base_url => "https://www.googleapis.com/plus/v1/people/$user_id/activities/public",
-    param => { alt=>'json', pp => 1, key => $api_key },
-    reponse_parse => 'JSON',
+## login
+my $agent = WWW::Mechanize->new;
+$agent->get('https://plus.google.com');
+$agent->follow_link( 
+    url_abs_regex => qr{^https://accounts\.google\.com/ServiceLogin},
     );
+$agent->submit_form(
+    with_fields => {
+        Email => $mail,
+        Passwd => $password,
+    },
+    );
+$agent->get('https://plus.google.com');
 
-my $res = $agent->get();
-print $res->parse_response;
-
+print $agent->content;
